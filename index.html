@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="bg">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Куиз за Столици</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #f3e8ff;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+    }
+
+    .option-btn {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .option-btn:hover:not(:disabled) {
+      transform: scale(1.02);
+      background-color: #f5f3ff;
+    }
+
+    .option-btn.wrong {
+      background-color: #fee2e2;
+      border-color: #ef4444;
+      color: #b91c1c;
+    }
+
+    .option-btn.correct {
+      background-color: #dcfce7;
+      border-color: #22c55e;
+      color: #15803d;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    @keyframes popIn {
+      0% {
+        transform: scale(0.8);
+        opacity: 0;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .pop-in {
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #ffd300;
+      top: 0;
+      opacity: 0;
+    }
+
+    @keyframes fall {
+      0% {
+        top: -10%;
+        transform: rotate(0deg) translateX(0);
+        opacity: 1;
+      }
+
+      100% {
+        top: 110%;
+        transform: rotate(720deg) translateX(20px);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+  <div class="max-w-3xl w-full card rounded-3xl shadow-2xl p-4 md:p-10 flex-grow">
+    <!-- Header & Progress -->
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-xl md:text-2xl font-bold text-purple-800">Куиз за Столици</h1>
+      <div class="text-right">
+        <div id="question-counter" class="text-gray-600 text-xs md:text-sm font-semibold mb-1">Въпрос: 1/20</div>
+        <span id="score-text" class="text-purple-600 font-bold text-lg md:text-xl">Точки: 0</span>
+      </div>
+    </div>
+    <div class="w-full bg-purple-100 h-2 md:h-3 rounded-full mb-6 md:mb-8 overflow-hidden">
+      <div id="progress-bar" class="bg-purple-600 h-full w-0 transition-all duration-500"></div>
+    </div>
+
+    <!-- Success Screen (Hidden by default) -->
+    <div id="success-screen"
+      class="hidden flex-col items-center justify-center text-center py-6 animate-fade relative overflow-hidden">
+      <!-- Confetti Container -->
+      <div id="confetti-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+      <div id="result-icon-bg" class="bg-purple-100 p-6 md:p-8 rounded-full mb-6 shadow-inner pop-in">
+        <div id="result-emoji" class="text-5xl md:text-6xl">🏆</div>
+      </div>
+
+      <h2 class="text-xl md:text-2xl font-bold text-gray-500 mb-2 uppercase tracking-wide">Резултат</h2>
+      <h1 id="rank-title"
+        class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4 pop-in"
+        style="animation-delay: 0.1s">
+        Професор
+      </h1>
+
+      <p class="text-lg md:text-xl text-gray-700 mb-8 font-medium">
+        Твоят резултат е <span id="final-score" class="font-bold text-purple-600 text-3xl">0</span> / 100
+      </p>
+
+      <button onclick="restartGame()"
+        class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 md:py-4 px-8 md:px-12 rounded-full shadow-xl transition-all transform hover:scale-105 active:scale-95 text-lg md:text-xl ring-4 ring-purple-100">
+        Играй отново
+      </button>
+    </div>
+
+    <!-- Секция за Изображение на Карта -->
+    <div id="image-container"
+      class="relative w-full h-48 md:h-80 bg-gray-100 rounded-2xl overflow-hidden mb-6 md:mb-8 border-4 border-white shadow-md">
+      <div id="loading-overlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-20">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-2"></div>
+        <span class="text-purple-600 text-sm font-medium">Зареждане на карта...</span>
+      </div>
+      <img id="map-image" src="" alt="Карта" class="w-full h-full object-cover">
+      <div
+        class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-8 py-3 rounded-2xl text-2xl md:text-3xl font-bold shadow-2xl backdrop-blur-sm border-4 border-white">
+        <span id="country-display">...</span>
+      </div>
+    </div>
+
+    <!-- Опции за отговор -->
+    <div id="quiz-area">
+      <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <!-- Бутоните се генерират тук -->
+      </div>
+
+      <!-- Секция за забележителности (показва се при верен отговор) -->
+      <div id="landmarks-panel" class="hidden animate-fade space-y-6">
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-xl">
+          <h2 id="success-msg" class="text-green-800 font-bold text-xl">Браво! Верен отговор.</h2>
+          <p class="text-green-700">Разгледайте забележителностите на този град:</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="landmarks-images">
+          <!-- Тук ще се генерират снимките на забележителностите -->
+        </div>
+
+        <button id="next-btn"
+          class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-5 rounded-2xl shadow-xl transition-all transform hover:scale-[1.01] active:scale-95 text-xl">
+          Следваща столица →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-8 mb-4 text-center text-purple-900/60 text-sm">
+    <p>създадено с любов от Ема Живкова, 3Д клас, 36СУ.</p>
+  </footer>
+
+  <script>
+    const capitalsData = [
+      {
+        "country": "България",
+        "capital": "София",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Cathedral_Saint_Alexander_Nevsky_%2823997168458%29.jpg/960px-Cathedral_Saint_Alexander_Nevsky_%2823997168458%29.jpg",
+        "landmarks": [
+          {
+            "name": "Храм-паметник Свети Александър Невски",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/AlexanderNevskyCathedral-Sofia-6.jpg/800px-AlexanderNevskyCathedral-Sofia-6.jpg"
+          },
+          {
+            "name": "Народен театър Иван Вазов",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/IvanVazov_National_Theatre_7.jpg/800px-IvanVazov_National_Theatre_7.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Франция",
+        "capital": "Париж",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/960px-Tour_Eiffel_Wikimedia_Commons.jpg",
+        "landmarks": [
+          {
+            "name": "Айфеловата кула",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/960px-Tour_Eiffel_Wikimedia_Commons.jpg"
+          },
+          {
+            "name": "Музеят Лувър",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/960px-Louvre_Museum_Wikimedia_Commons.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Италия",
+        "capital": "Рим",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Aerial_View_Of_The_Colosseum_Rome_Italy_Aerial_Photography_%28151212315%29.jpeg/960px-Aerial_View_Of_The_Colosseum_Rome_Italy_Aerial_Photography_%28151212315%29.jpeg",
+        "landmarks": [
+          {
+            "name": "Колизеумът",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Colosseum_in_Rome-April_2007-1-_copie_2B.jpg/960px-Colosseum_in_Rome-April_2007-1-_copie_2B.jpg"
+          },
+          {
+            "name": "Фонтанът ди Треви",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Fontana_di_Trevi_by_TC.jpg/960px-Fontana_di_Trevi_by_TC.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Япония",
+        "capital": "Токио",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Skyscrapers_of_Shinjuku_2009_January.jpg/800px-Skyscrapers_of_Shinjuku_2009_January.jpg",
+        "landmarks": [
+          {
+            "name": "Императорския дворец в Токио",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Imperial_Palace%2C_Tokyo_JP.jpg/960px-Imperial_Palace%2C_Tokyo_JP.jpg"
+          },
+          {
+            "name": "Кулата Токио Скайтри",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Worm%27s-eye_view_of_Tokyo_Skytree_with_vertical_symmetry_impression%2C_a_sunny_day%2C_in_Japan.jpg/960px-Worm%27s-eye_view_of_Tokyo_Skytree_with_vertical_symmetry_impression%2C_a_sunny_day%2C_in_Japan.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Великобритания",
+        "capital": "Лондон",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Canary_Wharf_from_Limehouse_London_June_2016_HDR.jpg/800px-Canary_Wharf_from_Limehouse_London_June_2016_HDR.jpg",
+        "landmarks": [
+          {
+            "name": "Биг Бен",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Big_Ben_at_sunset_-_2014-10-27_17-30.jpg/800px-Big_Ben_at_sunset_-_2014-10-27_17-30.jpg"
+          },
+          {
+            "name": "Тауър Бридж",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Tower_Bridge_Lights.jpg/800px-Tower_Bridge_Lights.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Германия",
+        "capital": "Берлин",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Berlin_Mitte_June_2023_01.jpg/800px-Berlin_Mitte_June_2023_01.jpg",
+        "landmarks": [
+          {
+            "name": "Бранденбургската врата",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Brandenburger_Tor_morgens.jpg/800px-Brandenburger_Tor_morgens.jpg"
+          },
+          {
+            "name": "Сградата на Райхстага",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Paul-L%C3%B6be-Haus%2C_Westseite%2C_Frontalansicht%2C_Berlin-Mitte%2C_151223%2C_ako.jpg/960px-Paul-L%C3%B6be-Haus%2C_Westseite%2C_Frontalansicht%2C_Berlin-Mitte%2C_151223%2C_ako.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Гърция",
+        "capital": "Атина",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/From_Temple_of_Olympian_Zeus_to_Lycabetus_Athens_Greece.jpg/800px-From_Temple_of_Olympian_Zeus_to_Lycabetus_Athens_Greece.jpg",
+        "landmarks": [
+          {
+            "name": "Партенонът на Акропола",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Parthenon_from_south.jpg/960px-Parthenon_from_south.jpg"
+          },
+          {
+            "name": "Стадион Панатинайкос",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Panathenaic_Stadium%2C_Athens%2C_20240601_1007_0050.jpg/800px-Panathenaic_Stadium%2C_Athens%2C_20240601_1007_0050.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Турция",
+        "capital": "Анкара",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Ankara_%2816290014657%29.jpg/800px-Ankara_%2816290014657%29.jpg",
+        "landmarks": [
+          {
+            "name": "Мавзолеят Аниткабир",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Ataturk%27s_Mausoleum_%286225341313%29.jpg/960px-Ataturk%27s_Mausoleum_%286225341313%29.jpg"
+          },
+          {
+            "name": "Крепостта на Анкара",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Ankara_Castle.jpg/960px-Ankara_Castle.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Испания",
+        "capital": "Мадрид",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Gran_V%C3%ADa_%28Madrid%29_26.jpg/960px-Gran_V%C3%ADa_%28Madrid%29_26.jpg",
+        "landmarks": [
+          {
+            "name": "Кралският дворец в Мадрид",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Palacio_Real_de_Madrid_-_13.jpg/800px-Palacio_Real_de_Madrid_-_13.jpg"
+          },
+          {
+            "name": "Паркът Ретиро",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Picus_sharpei%2C_Parque_de_El_Retiro%2C_Madrid_-_01.jpg/960px-Picus_sharpei%2C_Parque_de_El_Retiro%2C_Madrid_-_01.jpg"
+          }
+        ]
+      },
+      {
+        "country": "САЩ",
+        "capital": "Вашингтон",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/SeattleI5Skyline.jpg/800px-SeattleI5Skyline.jpg",
+        "landmarks": [
+          {
+            "name": "Белият дом",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/The_White_House%2C_Washington%2C_D.C._USA2.jpg/960px-The_White_House%2C_Washington%2C_D.C._USA2.jpg"
+          },
+          {
+            "name": "Мемориалът на Линкълн",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Lincoln_Memorial_east_side.JPG/960px-Lincoln_Memorial_east_side.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Китай",
+        "capital": "Пекин",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/View_of_Beijing.jpg/800px-View_of_Beijing.jpg",
+        "landmarks": [
+          {
+            "name": "Забраненият град",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/The_Forbidden_City_-_View_from_Coal_Hill.jpg/800px-The_Forbidden_City_-_View_from_Coal_Hill.jpg"
+          },
+          {
+            "name": "Небесният храм",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Temple_of_Heaven%2C_Beijing%2C_China_-_010_edit.jpg/960px-Temple_of_Heaven%2C_Beijing%2C_China_-_010_edit.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Египет",
+        "capital": "Кайро",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Flag_Map_of_Cairo_governorate_%28de-facto_cairene_flag%29.png/800px-Flag_Map_of_Cairo_governorate_%28de-facto_cairene_flag%29.png",
+        "landmarks": [
+          {
+            "name": "Голямата пирамида в Гиза",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Pyramid_of_Cheops_-_side.jpg/800px-Pyramid_of_Cheops_-_side.jpg"
+          },
+          {
+            "name": "Джамията на Мохамед Али",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Muhammad_Ali_Mosque_1.jpg/960px-Muhammad_Ali_Mosque_1.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Бразилия",
+        "capital": "Бразилия",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/BalnearioCamboriuSkyline.jpg/800px-BalnearioCamboriuSkyline.jpg",
+        "landmarks": [
+          {
+            "name": "Катедралата на Бразилия",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Catedral_Metropolitana_de_Bras%C3%ADlia_-_Bras%C3%ADlia_-_20150603150521.jpg/960px-Catedral_Metropolitana_de_Bras%C3%ADlia_-_Bras%C3%ADlia_-_20150603150521.jpg"
+          },
+          {
+            "name": "Площадът на трите власти",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/PalaciodoplanaltoFR.jpg/960px-PalaciodoplanaltoFR.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Австрия",
+        "capital": "Виена",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Schonbrunn_Palace_-_Vienna.jpg/960px-Schonbrunn_Palace_-_Vienna.jpg",
+        "landmarks": [
+          {
+            "name": "Дворецът Шьонбрун",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Schoenbrunn_Palace_as_seen_from_Neptune_Fountain%2C_September_2016.jpg/800px-Schoenbrunn_Palace_as_seen_from_Neptune_Fountain%2C_September_2016.jpg"
+          },
+          {
+            "name": "Виенската опера",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Staatsoper_Wien_DSC_5273w.jpg/800px-Staatsoper_Wien_DSC_5273w.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Нидерландия",
+        "capital": "Амстердам",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Colorful_canal_houses_at_golden_hour_in_Damrak_avenue_Amsterdam_the_Netherlands.jpg/800px-Colorful_canal_houses_at_golden_hour_in_Damrak_avenue_Amsterdam_the_Netherlands.jpg",
+        "landmarks": [
+          {
+            "name": "Кралският дворец Амстердам",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Palacio_Real%2C_%C3%81msterdam%2C_Pa%C3%ADses_Bajos%2C_2016-05-30%2C_DD_07-09_HDR.jpg/960px-Palacio_Real%2C_%C3%81msterdam%2C_Pa%C3%ADses_Bajos%2C_2016-05-30%2C_DD_07-09_HDR.jpg"
+          },
+          {
+            "name": "Рейксмузеум",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Rijksmuseum_in_Amsterdam.jpg/800px-Rijksmuseum_in_Amsterdam.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Унгария",
+        "capital": "Будапеща",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/20190502_View_from_Buda_Castle_1059_2025_DxO.jpg/800px-20190502_View_from_Buda_Castle_1059_2025_DxO.jpg",
+        "landmarks": [
+          {
+            "name": "Сградата на Парламента Будапеща",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Budapest_Parliament_4604.JPG/960px-Budapest_Parliament_4604.JPG"
+          },
+          {
+            "name": "Рибарският бастион",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Fisherman%27s_Bastion_2014.jpg/960px-Fisherman%27s_Bastion_2014.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Чехия",
+        "capital": "Прага",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Prague_skyline_at_dawn.jpg/800px-Prague_skyline_at_dawn.jpg",
+        "landmarks": [
+          {
+            "name": "Карловият мост",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Prague_07-2016_View_from_Petrinska_Tower_img2.jpg/960px-Prague_07-2016_View_from_Petrinska_Tower_img2.jpg"
+          },
+          {
+            "name": "Пражкият замък",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Guard_at_the_Prague_castle%2C_Prague_-_7620_%28cropped%29.jpg/960px-Guard_at_the_Prague_castle%2C_Prague_-_7620_%28cropped%29.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Русия",
+        "capital": "Москва",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0-%D1%80%D0%B5%D0%BA%D0%B0_%D0%B2_%D0%91%D1%80%D0%B0%D1%82%D0%B5%D0%B5%D0%B2%D0%BE_2020-07.jpg/800px-%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0-%D1%80%D0%B5%D0%BA%D0%B0_%D0%B2_%D0%91%D1%80%D0%B0%D1%82%D0%B5%D0%B5%D0%B2%D0%BE_2020-07.jpg",
+        "landmarks": [
+          {
+            "name": "Катедралата Свети Василий",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Sant_Vasily_cathedral_in_Moscow.JPG/800px-Sant_Vasily_cathedral_in_Moscow.JPG"
+          },
+          {
+            "name": "Червеният площад",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Moscow%27s_Red_Square%2C_Moscow%2C_Russia.jpg/960px-Moscow%27s_Red_Square%2C_Moscow%2C_Russia.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Португалия",
+        "capital": "Лисабон",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Lisbon_BW_2018-10-03_10-09-02.jpg/800px-Lisbon_BW_2018-10-03_10-09-02.jpg",
+        "landmarks": [
+          {
+            "name": "Кулата Белем",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Torre_Bel%C3%A9m_April_2009-4a.jpg/960px-Torre_Bel%C3%A9m_April_2009-4a.jpg"
+          },
+          {
+            "name": "Площадът на търговията Лисабон",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Arco_Triunfal_da_Rua_Augusta%2C_Plaza_del_Comercio%2C_Lisboa%2C_Portugal%2C_2012-05-12%2C_DD_02.JPG/960px-Arco_Triunfal_da_Rua_Augusta%2C_Plaza_del_Comercio%2C_Lisboa%2C_Portugal%2C_2012-05-12%2C_DD_02.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Швейцария",
+        "capital": "Берн",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Bern_luftaufnahme.png/800px-Bern_luftaufnahme.png",
+        "landmarks": [
+          {
+            "name": "Часовниковата кула Цитглогe",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/The_Zytglogge_clock_tower.jpg/960px-The_Zytglogge_clock_tower.jpg"
+          },
+          {
+            "name": "Мечата яма Берн",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/B%C3%A4rengraben_Bern.JPG/960px-B%C3%A4rengraben_Bern.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Мексико",
+        "capital": "Мексико Сити",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Grupo_Escult%C3%B3rico_de_la_C%C3%BApula_del_Palacio_de_Bellas_Artes_de_M%C3%A9xico_6.jpg/960px-Grupo_Escult%C3%B3rico_de_la_C%C3%BApula_del_Palacio_de_Bellas_Artes_de_M%C3%A9xico_6.jpg",
+        "landmarks": [
+          {
+            "name": "Ангелът на независимостта Мексико",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Angel_de_la_independencia170409.jpg/960px-Angel_de_la_independencia170409.jpg"
+          },
+          {
+            "name": "Дворецът на изящните изкуства Мексико",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Mexico_City_Palacio_de_bellas_artes.jpg/960px-Mexico_City_Palacio_de_bellas_artes.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Аржентина",
+        "capital": "Буенос Айрес",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/199_-_Buenos_Aires_-_A%C3%A9roport_international_Ezeiza_-_Janvier_2010.jpg/800px-199_-_Buenos_Aires_-_A%C3%A9roport_international_Ezeiza_-_Janvier_2010.jpg",
+        "landmarks": [
+          {
+            "name": "Розовата къща Буенос Айрес",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Casa_Rosada%2C_Buenos_Aires%2C_Argentina.jpg/960px-Casa_Rosada%2C_Buenos_Aires%2C_Argentina.jpg"
+          },
+          {
+            "name": "Квартал Ла Бока",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Caminito_Farolito.jpg/800px-Caminito_Farolito.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Канада",
+        "capital": "Отава",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Centre_Block%2C_Ottawa%2C_Southeast_view_20170422_1.jpg/800px-Centre_Block%2C_Ottawa%2C_Southeast_view_20170422_1.jpg",
+        "landmarks": [
+          {
+            "name": "Парламентарният хълм Отава",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Centre_Block_-_Parliament_Hill.jpg/960px-Centre_Block_-_Parliament_Hill.jpg"
+          },
+          {
+            "name": "Каналът Ридо",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Rideau_Canal_00759.jpg/960px-Rideau_Canal_00759.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Австралия",
+        "capital": "Канбера",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Canberra_%28AU%29%2C_Commonwealth_Avenue_Bridge_--_2019_--_1811.jpg/960px-Canberra_%28AU%29%2C_Commonwealth_Avenue_Bridge_--_2019_--_1811.jpg",
+        "landmarks": [
+          {
+            "name": "Езерото Бърли Грифин",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Canberra_%28AU%29%2C_Commonwealth_Avenue_Bridge_--_2019_--_1811.jpg/960px-Canberra_%28AU%29%2C_Commonwealth_Avenue_Bridge_--_2019_--_1811.jpg"
+          },
+          {
+            "name": "Австралийският военен мемориал",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/ANZAC_Parade_from_the_Australian_War_Memorial%2C_Canberra_ACT.jpg/960px-ANZAC_Parade_from_the_Australian_War_Memorial%2C_Canberra_ACT.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Южна Корея",
+        "capital": "Сеул",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Wongwt_%E9%A6%96%E7%88%BE%E7%81%AB%E8%BB%8A%E7%AB%99_%2816942638829%29.jpg/800px-Wongwt_%E9%A6%96%E7%88%BE%E7%81%AB%E8%BB%8A%E7%AB%99_%2816942638829%29.jpg",
+        "landmarks": [
+          {
+            "name": "Кулата Намсан",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/N_Seoul_Tower_complex_staircase.jpg/960px-N_Seoul_Tower_complex_staircase.jpg"
+          },
+          {
+            "name": "Дворецът Кьонбоккун",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Gyeonghoeru_%28Royal_Banquet_Hall%29_at_Gyeongbokgung_Palace%2C_Seoul.jpg/960px-Gyeonghoeru_%28Royal_Banquet_Hall%29_at_Gyeongbokgung_Palace%2C_Seoul.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Индия",
+        "capital": "Ню Делхи",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/India_Gate_1_%28New_Delhi%29.jpg/960px-India_Gate_1_%28New_Delhi%29.jpg",
+        "landmarks": [
+          {
+            "name": "Храмът Лотос",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Lotus_Temple_in_New_Delhi_03-2016.jpg/960px-Lotus_Temple_in_New_Delhi_03-2016.jpg"
+          },
+          {
+            "name": "Гробницата на Хумаюн",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Tomb_of_Humayun%2C_Delhi.jpg/960px-Tomb_of_Humayun%2C_Delhi.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Тайланд",
+        "capital": "Банкок",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Bangkok_skytrain_sunset.jpg/800px-Bangkok_skytrain_sunset.jpg",
+        "landmarks": [
+          {
+            "name": "Храмът Ват Арун",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Templo_Wat_Arun%2C_Bangkok%2C_Tailandia%2C_2013-08-22%2C_DD_30.jpg/960px-Templo_Wat_Arun%2C_Bangkok%2C_Tailandia%2C_2013-08-22%2C_DD_30.jpg"
+          },
+          {
+            "name": "Големият кралски дворец Банкок",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B8%A3%E0%B8%B1%E0%B8%95%E0%B8%99%E0%B8%A8%E0%B8%B2%E0%B8%AA%E0%B8%94%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B8%A1_%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B9%81%E0%B8%81%E0%B9%89%E0%B8%A7_%E0%B8%81%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%80%E0%B8%97%E0%B8%9E%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%99%E0%B8%84%E0%B8%A3_-_Wat_Phra_Kaew%2C_Temple_of_Emerald_Buddha%2C_Bangkok%2C_Thailand.jpg/960px-thumbnail.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Норвегия",
+        "capital": "Осло",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Oslo_palace1.jpg/800px-Oslo_palace1.jpg",
+        "landmarks": [
+          {
+            "name": "Операта в Осло",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Oslo_Opera_House_2023_1.jpg/960px-Oslo_Opera_House_2023_1.jpg"
+          },
+          {
+            "name": "Кметството на Осло",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Oslo_Nansen.JPG/800px-Oslo_Nansen.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Швеция",
+        "capital": "Стокхолм",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Vaxholmsleden_February_2013_02_%28crop%29.jpg/800px-Vaxholmsleden_February_2013_02_%28crop%29.jpg",
+        "landmarks": [
+          {
+            "name": "Кралският дворец Стокхолм",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Storkyrkan_and_Kungliga_slottet_Stockholm_2016_01.jpg/960px-Storkyrkan_and_Kungliga_slottet_Stockholm_2016_01.jpg"
+          },
+          {
+            "name": "Сградата на общината Стокхолм",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Stockholm_City_Hall_February_2014_02.jpg/960px-Stockholm_City_Hall_February_2014_02.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Дания",
+        "capital": "Копенхаген",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Cityscape_and_skyline_by_the_Copenhagen_Lakes%2C_Denmark_-_%2836018109956%29.jpg/800px-Cityscape_and_skyline_by_the_Copenhagen_Lakes%2C_Denmark_-_%2836018109956%29.jpg",
+        "landmarks": [
+          {
+            "name": "Каналът Нихавн",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Kopenhagen_%28DK%29%2C_Nyhavn_--_2017_--_1711.jpg/960px-Kopenhagen_%28DK%29%2C_Nyhavn_--_2017_--_1711.jpg"
+          },
+          {
+            "name": "Статуята на Малката русалка",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/The_Little_Mermaid_home.jpg/960px-The_Little_Mermaid_home.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Финландия",
+        "capital": "Хелзинки",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Suomen_Ilmakuva_-_Aerial_photograph_from_the_center_of_Helsinki_to_the_sea_in_2015_%28cropped%3B_Senate_Square%2C_Market_Square%29.jpg/960px-Suomen_Ilmakuva_-_Aerial_photograph_from_the_center_of_Helsinki_to_the_sea_in_2015_%28cropped%3B_Senate_Square%2C_Market_Square%29.jpg",
+        "landmarks": [
+          {
+            "name": "Лутеранската катедрала Хелзинки",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Lutheran_Cathedral_Helsinki.jpg/960px-Lutheran_Cathedral_Helsinki.jpg"
+          },
+          {
+            "name": "Пазарният площад Хелзинки",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/14-08-13-helsinki-RalfR-15.jpg/960px-14-08-13-helsinki-RalfR-15.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Ирландия",
+        "capital": "Дъблин",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Dublin_Stephen%27s_Green-44_edit.jpg/800px-Dublin_Stephen%27s_Green-44_edit.jpg",
+        "landmarks": [
+          {
+            "name": "Тринити Колидж Дъблин",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Long_Room_Interior%2C_Trinity_College_Dublin%2C_Ireland_-_Diliff.jpg/960px-Long_Room_Interior%2C_Trinity_College_Dublin%2C_Ireland_-_Diliff.jpg"
+          },
+          {
+            "name": "Замъкът в Дъблин",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Chapel_Royal_Interior_1%2C_Dublin_Castle%2C_Dublin%2C_Ireland_-_Diliff.jpg/960px-Chapel_Royal_Interior_1%2C_Dublin_Castle%2C_Dublin%2C_Ireland_-_Diliff.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Белгия",
+        "capital": "Брюксел",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Royal_Palace_in_Brussels.JPG/800px-Royal_Palace_in_Brussels.JPG",
+        "landmarks": [
+          {
+            "name": "Гран Плас Брюксел",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Edificios_en_la_Grand-Place%2C_Bruselas%2C_B%C3%A9lgica%2C_2021-12-15%2C_DD_184-186_HDR.jpg/960px-Edificios_en_la_Grand-Place%2C_Bruselas%2C_B%C3%A9lgica%2C_2021-12-15%2C_DD_184-186_HDR.jpg"
+          },
+          {
+            "name": "Манекен Пис",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Bruxelles_Manneken_Pis.jpg/800px-Bruxelles_Manneken_Pis.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Полша",
+        "capital": "Варшава",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Warsaw_07-13_img29_View_from_Palace_of_Culture_and_Science.jpg/800px-Warsaw_07-13_img29_View_from_Palace_of_Culture_and_Science.jpg",
+        "landmarks": [
+          {
+            "name": "Кралският замък Варшава",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Bernardo_Bellotto_-_View_of_Warsaw_from_the_Royal_Castle_-_Google_Art_Project.jpg/800px-Bernardo_Bellotto_-_View_of_Warsaw_from_the_Royal_Castle_-_Google_Art_Project.jpg"
+          },
+          {
+            "name": "Паркът Лаженки",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Red_squirrel_%2821813%29.jpg/960px-Red_squirrel_%2821813%29.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Румъния",
+        "capital": "Букурещ",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Bucharest-Skyline-01.jpg/800px-Bucharest-Skyline-01.jpg",
+        "landmarks": [
+          {
+            "name": "Палатът на Парламента Букурещ",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/8/86/North_Atlantic_Council_Summit_Meeting_%282008%29.jpg"
+          },
+          {
+            "name": "Атинеумът Букурещ",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Ateneo_Rumano%2C_Bucarest%2C_Ruman%C3%ADa%2C_2016-05-29%2C_DD_73.jpg/960px-Ateneo_Rumano%2C_Bucarest%2C_Ruman%C3%ADa%2C_2016-05-29%2C_DD_73.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Сърбия",
+        "capital": "Белград",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Church_of_Saint_Sava_%28Belgrade%2C_Serbia%29.jpg/800px-Church_of_Saint_Sava_%28Belgrade%2C_Serbia%29.jpg",
+        "landmarks": [
+          {
+            "name": "Крепостта Калемегдан",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Belgrade_Fortress_Kalemegdan-9924.NEF.jpg/960px-Belgrade_Fortress_Kalemegdan-9924.NEF.jpg"
+          },
+          {
+            "name": "Храмът Свети Сава",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/%D0%A6%D1%80%D0%BA%D0%B2%D0%B0_%D1%81%D0%B2%D0%B5%D1%82%D0%BE%D0%B3_%D0%A1%D0%B0%D0%B2%D0%B5%2C_%D0%91%D0%B5%D0%BE%D0%B3%D1%80%D0%B0%D0%B4_%28Church_of_Saint_Sava%2C_2023%29.jpg/960px-%D0%A6%D1%80%D0%BA%D0%B2%D0%B0_%D1%81%D0%B2%D0%B5%D1%82%D0%BE%D0%B3_%D0%A1%D0%B0%D0%B2%D0%B5%2C_%D0%91%D0%B5%D0%BE%D0%B3%D1%80%D0%B0%D0%B4_%28Church_of_Saint_Sava%2C_2023%29.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Индонезия",
+        "capital": "Джакарта",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Jakarta_Panorama.jpg/960px-Jakarta_Panorama.jpg",
+        "landmarks": [
+          {
+            "name": "Монументът Монас",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Jakarta_Indonesia_Merdeka-Square-06.jpg/960px-Jakarta_Indonesia_Merdeka-Square-06.jpg"
+          },
+          {
+            "name": "Джамията Истиклял",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Inner_courtyard_of_the_Masjid_Istiqlal_Jakarta.jpg/960px-Inner_courtyard_of_the_Masjid_Istiqlal_Jakarta.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Сингапур",
+        "capital": "Сингапур",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Downtown_Core.jpg/800px-Downtown_Core.jpg",
+        "landmarks": [
+          {
+            "name": "Марина Бей Сандс",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Marina_Bay_Sands_and_illuminated_polyhedral_building_Louis_Vuitton_over_the_water_at_blue_hour_with_pink_clouds_in_Singapore.jpg/960px-Marina_Bay_Sands_and_illuminated_polyhedral_building_Louis_Vuitton_over_the_water_at_blue_hour_with_pink_clouds_in_Singapore.jpg"
+          },
+          {
+            "name": "Супердърветата в Градините край залива",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Supertree_Grove%2C_Gardens_by_the_Bay%2C_Singapore1.jpg/960px-Supertree_Grove%2C_Gardens_by_the_Bay%2C_Singapore1.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Малайзия",
+        "capital": "Куала Лумпур",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/%D0%9A%D1%83%D0%B0%D0%BB%D0%B0_%D0%9B%D1%83%D0%BC%D0%BF%D1%83%D1%80_petronas_toters.jpg/800px-%D0%9A%D1%83%D0%B0%D0%BB%D0%B0_%D0%9B%D1%83%D0%BC%D0%BF%D1%83%D1%80_petronas_toters.jpg",
+        "landmarks": [
+          {
+            "name": "Кулите Петронас",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Petronas_Towers_at_Night_-_from_the_base_upwards.jpg/800px-Petronas_Towers_at_Night_-_from_the_base_upwards.jpg"
+          },
+          {
+            "name": "Пещерите Бату",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Gombak_Selangor_Batu-Caves-01.jpg/960px-Gombak_Selangor_Batu-Caves-01.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Виетнам",
+        "capital": "Ханой",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Sunset_over_Hanoi_After_the_Rain.jpg/800px-Sunset_over_Hanoi_After_the_Rain.jpg",
+        "landmarks": [
+          {
+            "name": "Литературният храм Ханой",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Main_gate_of_the_Temple_of_Literature%2C_Hanoi%2C_Vietnam%2C_20240123_0929_3068.jpg/960px-Main_gate_of_the_Temple_of_Literature%2C_Hanoi%2C_Vietnam%2C_20240123_0929_3068.jpg"
+          },
+          {
+            "name": "Мавзолеят на Хо Ши Мин",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Hanoi_Vietnam_Mausoleum-of-Ho-Chi-Minh-03.jpg/960px-Hanoi_Vietnam_Mausoleum-of-Ho-Chi-Minh-03.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Южна Африка",
+        "capital": "Претория",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Pretoria_CBD1.jpg/800px-Pretoria_CBD1.jpg",
+        "landmarks": [
+          {
+            "name": "Сградите на Съюза Претория",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6b/Uniegebou.jpg"
+          },
+          {
+            "name": "Статуята на Нелсън Мандела Претория",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Late_Nelson_Mandela_Statue%2C_Pretoria_South_Africa_Redux.png/960px-Late_Nelson_Mandela_Statue%2C_Pretoria_South_Africa_Redux.png"
+          }
+        ]
+      },
+      {
+        "country": "Кения",
+        "capital": "Найроби",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Nairobi%2C_view_from_KICC_3.JPG/800px-Nairobi%2C_view_from_KICC_3.JPG",
+        "landmarks": [
+          {
+            "name": "Национален парк Найроби",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Gyps_rueppellii_-Nairobi_National_Park%2C_Kenya-8-4c.jpg/800px-Gyps_rueppellii_-Nairobi_National_Park%2C_Kenya-8-4c.jpg"
+          },
+          {
+            "name": "Музеят на Карен Бликсен",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Karen_blixen_museum_in_nairobi_kenya_02.jpg/960px-Karen_blixen_museum_in_nairobi_kenya_02.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Саудитска Арабия",
+        "capital": "Рияд",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Riyadh_Skyline.jpg/960px-Riyadh_Skyline.jpg",
+        "landmarks": [
+          {
+            "name": "Центърът Ал Файсалия",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Riyadh_Skyline.jpg/960px-Riyadh_Skyline.jpg"
+          },
+          {
+            "name": "Крепостта Масмак",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Masmak_castle.jpg/960px-Masmak_castle.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Израел",
+        "capital": "Йерусалим",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Jerusalem_Dome_of_the_rock_BW_14.JPG/800px-Jerusalem_Dome_of_the_rock_BW_14.JPG",
+        "landmarks": [
+          {
+            "name": "Яд Вашем",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Yad_Vashem_View.jpg/800px-Yad_Vashem_View.jpg"
+          },
+          {
+            "name": "Давидовият град",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/City_of_David%2C_Southern_Wall_Temple_Mount_Kidron_Valley_Ophel_and_Siloam.jpg/960px-City_of_David%2C_Southern_Wall_Temple_Mount_Kidron_Valley_Ophel_and_Siloam.jpg"
+          }
+        ]
+      },
+      {
+        "country": "ОАЕ",
+        "capital": "Абу Даби",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/13-08-06-abu-dhabi-airport-01.jpg/800px-13-08-06-abu-dhabi-airport-01.jpg",
+        "landmarks": [
+          {
+            "name": "Джамията Шейх Зайед",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Sheikh_Zayed_Grand_Mosque_Chandelier.jpg/960px-Sheikh_Zayed_Grand_Mosque_Chandelier.jpg"
+          },
+          {
+            "name": "Хотел Емирейтс Палац",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Emirates_palace_from_top_view.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Чили",
+        "capital": "Сантяго",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Gran_Santiago_Tower%2C_Views_from_San_Crit%C3%B3bal_Hill_-_Santiago_-_Chile_07.jpg/960px-Gran_Santiago_Tower%2C_Views_from_San_Crit%C3%B3bal_Hill_-_Santiago_-_Chile_07.jpg",
+        "landmarks": [
+          {
+            "name": "Небостъргачът Гран Торе Сантяго",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Gran_Torre_Santiago_%2839930790631%29.jpg/960px-Gran_Torre_Santiago_%2839930790631%29.jpg"
+          },
+          {
+            "name": "Централният пазар Сантяго",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Mercado_Central._Santiago.jpg/960px-Mercado_Central._Santiago.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Перу",
+        "capital": "Лима",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Lima_public_square.jpg/800px-Lima_public_square.jpg",
+        "landmarks": [
+          {
+            "name": "Манастирът Сан Франциско Лима",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Lima_convento_san_francisco_de_asis.jpg/960px-Lima_convento_san_francisco_de_asis.jpg"
+          },
+          {
+            "name": "Паркът на магическата вода",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Circuito_m%C3%A1gico_del_agua%2C_Parque_Reserva%2C_Lima%2C_Per%C3%BA%2C_2015-07-28%2C_DD_124.JPG/960px-Circuito_m%C3%A1gico_del_agua%2C_Parque_Reserva%2C_Lima%2C_Per%C3%BA%2C_2015-07-28%2C_DD_124.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Куба",
+        "capital": "Хавана",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/El_Capitolio_Havana_Cuba.jpg/960px-El_Capitolio_Havana_Cuba.jpg",
+        "landmarks": [
+          {
+            "name": "Капитолият в Хавана",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/El_Capitolio_Havana_Cuba.jpg/960px-El_Capitolio_Havana_Cuba.jpg"
+          },
+          {
+            "name": "На крайбрежната улица Малекон",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/AvMalecon-LaHabanaCuba-04735.jpg/960px-AvMalecon-LaHabanaCuba-04735.jpg"
+          }
+        ]
+      },
+      {
+        "country": "Монако",
+        "capital": "Монако",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Panorama_von_Monaco-La_Turbie.jpg/800px-Panorama_von_Monaco-La_Turbie.jpg",
+        "landmarks": [
+          {
+            "name": "Казиното Монте Карло",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Casino_de_Montecarlo%2C_M%C3%B3naco%2C_2016-06-23%2C_DD_06.jpg/800px-Casino_de_Montecarlo%2C_M%C3%B3naco%2C_2016-06-23%2C_DD_06.jpg"
+          },
+          {
+            "name": "Кралският дворец на Монако",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Princely_Palace_of_Monaco.JPG/960px-Princely_Palace_of_Monaco.JPG"
+          }
+        ]
+      },
+      {
+        "country": "Ватикан",
+        "capital": "Ватикан",
+        "mapUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/St_Peter%27s_Square%2C_Vatican_City_-_April_2007.jpg/800px-St_Peter%27s_Square%2C_Vatican_City_-_April_2007.jpg",
+        "landmarks": [
+          {
+            "name": "Базиликата Свети Петър",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Vatican_City_Panorama.jpg/800px-Vatican_City_Panorama.jpg"
+          },
+          {
+            "name": "Сикстинската капела",
+            "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/8/82/Sistina-interno.jpg"
+          }
+        ]
+      }
+    ];
+
+    const MAX_QUESTIONS = 20;
+    let score = 0;
+    let questionsAnswered = 0;
+    let currentIdx = -1;
+    let isCorrect = false;
+    let askedQuestions = new Set(); // Track which questions have been asked
+
+    function loadQuestion() {
+      // Check if game is over
+      if (questionsAnswered >= MAX_QUESTIONS) {
+        showSuccessScreen();
+        return;
+      }
+
+      isCorrect = false;
+      document.getElementById('loading-overlay').style.display = 'flex';
+      document.getElementById('landmarks-panel').classList.add('hidden');
+      document.getElementById('options-grid').innerHTML = '';
+      document.getElementById('image-container').style.display = 'block'; // Ensure map is visible
+      document.getElementById('quiz-area').style.display = 'block'; // Ensure quiz area is visible
+      document.getElementById('success-screen').classList.add('hidden'); // Ensure success screen is hidden
+
+      // Reset if we somehow ran out of data but barely happened with 20 ques and big dataset
+      if (askedQuestions.size >= capitalsData.length) {
+        askedQuestions.clear();
+      }
+
+      // Get list of unasked questions
+      let availableQuestions = [];
+      for (let i = 0; i < capitalsData.length; i++) {
+        if (!askedQuestions.has(i)) {
+          availableQuestions.push(i);
+        }
+      }
+
+      // Select random from available questions
+      let nextIdx = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+      currentIdx = nextIdx;
+      askedQuestions.add(nextIdx);
+
+      const question = capitalsData[currentIdx];
+      document.getElementById('country-display').textContent = question.country;
+
+      // Update Header Info
+      document.getElementById('question-counter').textContent = `Въпрос: ${questionsAnswered + 1}/${MAX_QUESTIONS}`;
+
+      // Зареждаме карта
+      const mapImg = document.getElementById('map-image');
+      mapImg.src = question.mapUrl;
+      mapImg.onerror = function () {
+        this.src = `https://via.placeholder.com/600x400/805ad5/ffffff?text=${encodeURIComponent(question.country)}`;
+      };
+      mapImg.onload = function () {
+        document.getElementById('loading-overlay').style.display = 'none';
+      };
+
+      // Генерираме опции
+      let options = [question.capital];
+      while (options.length < 4) {
+        let randomCap = capitalsData[Math.floor(Math.random() * capitalsData.length)].capital;
+        if (!options.includes(randomCap)) options.push(randomCap);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn bg-white border-2 border-purple-100 text-purple-900 font-bold py-3 md:py-4 px-4 rounded-2xl shadow-sm text-base md:text-lg";
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(opt, btn);
+        document.getElementById('options-grid').appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected, btn) {
+      if (isCorrect) return;
+
+      const question = capitalsData[currentIdx];
+      if (selected === question.capital) {
+        isCorrect = true;
+        btn.classList.add('correct');
+        score += 5;
+        questionsAnswered++;
+        updateUI();
+        showLandmarks();
+
+        // Auto-scroll to results on mobile
+        setTimeout(() => {
+          document.getElementById('landmarks-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      } else {
+        btn.classList.add('wrong');
+        btn.disabled = true;
+        score = Math.max(0, score - 2);
+        updateUI();
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('score-text').textContent = `Точки: ${score}`;
+      // Progress is based on completed questions out of MAX
+      const progress = (questionsAnswered / MAX_QUESTIONS) * 100;
+      document.getElementById('progress-bar').style.width = `${progress}%`;
+    }
+
+    function showLandmarks() {
+      const question = capitalsData[currentIdx];
+      const container = document.getElementById('landmarks-images');
+      container.innerHTML = '<div class="col-span-full py-4 text-center text-purple-500 animate-pulse">Зареждане на снимки на забележителности...</div>';
+      document.getElementById('landmarks-panel').classList.remove('hidden');
+
+      // Check if this was the last question
+      const nextBtn = document.getElementById('next-btn');
+      if (questionsAnswered >= MAX_QUESTIONS) {
+        nextBtn.textContent = "Виж Резултата →";
+      } else {
+        nextBtn.textContent = "Следваща столица →";
+      }
+
+      // Изчакваме малко за визуален ефект
+      setTimeout(() => {
+        container.innerHTML = '';
+        question.landmarks.forEach((landmark) => {
+          const div = document.createElement('div');
+          div.className = "rounded-xl overflow-hidden shadow-lg border-2 border-white";
+          div.innerHTML = `
+            <img src="${landmark.imageUrl}"
+                 class="w-full h-40 object-cover"
+                 alt="${landmark.name}"
+                 onerror="this.src='https://via.placeholder.com/400x300/e5e7eb/6b7280?text=${encodeURIComponent(landmark.name)}'">
+            <div class="bg-white p-3 text-sm font-bold text-purple-800 text-center uppercase tracking-tight">
+              ${landmark.name}
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      }, 300);
+    }
+
+    function showSuccessScreen() {
+      document.getElementById('image-container').style.display = 'none';
+      document.getElementById('quiz-area').style.display = 'none';
+      document.getElementById('options-grid').innerHTML = '';
+      document.getElementById('landmarks-panel').classList.add('hidden');
+
+      const successScreen = document.getElementById('success-screen');
+      successScreen.classList.remove('hidden');
+      successScreen.classList.add('flex');
+
+      document.getElementById('final-score').textContent = score;
+
+      // Determine Rank
+      let title = "";
+      let emoji = "";
+      let colorClass = ""; // tailwind color class for bg
+      let msg = "";
+
+      if (score > 95) {
+        title = "Професор по столици!";
+        emoji = "🦉";
+        colorClass = "bg-yellow-100 text-yellow-600";
+        startConfetti();
+      } else if (score >= 90) {
+        title = "Доктор по столици!";
+        emoji = "🎓";
+        colorClass = "bg-blue-100 text-blue-600";
+        startConfetti();
+      } else if (score >= 85) {
+        title = "Ставаш";
+        emoji = "👌";
+        colorClass = "bg-orange-100 text-orange-600";
+      } else {
+        title = "Още може!";
+        emoji = "📚";
+        colorClass = "bg-gray-100 text-gray-600";
+      }
+
+      document.getElementById('rank-title').textContent = title;
+      document.getElementById('result-emoji').textContent = emoji;
+
+      // Reset color classes on icon bg
+      const iconBg = document.getElementById('result-icon-bg');
+      iconBg.className = `p-8 rounded-full mb-6 shadow-inner pop-in ${colorClass}`;
+    }
+
+    function startConfetti() {
+      const container = document.getElementById('confetti-container');
+      container.innerHTML = ''; // prevent duplicates
+      const colors = ['#a855f7', '#ec4899', '#3b82f6', '#eab308', '#22c55e'];
+
+      for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-piece';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        container.appendChild(confetti);
+      }
+    }
+
+    function restartGame() {
+      score = 0;
+      questionsAnswered = 0;
+      askedQuestions.clear();
+      updateUI();
+
+      // Reset Counter Display
+      document.getElementById('question-counter').textContent = `Въпрос: 1/${MAX_QUESTIONS}`;
+
+      // Show Game Elements
+      document.getElementById('success-screen').classList.add('hidden');
+      document.getElementById('success-screen').classList.remove('flex');
+      document.getElementById('confetti-container').innerHTML = ''; // clear confetti
+
+      // Load first question
+      loadQuestion();
+    }
+
+    document.getElementById('next-btn').onclick = loadQuestion;
+    window.onload = loadQuestion;
+  </script>
+</body>
+
+</html>
